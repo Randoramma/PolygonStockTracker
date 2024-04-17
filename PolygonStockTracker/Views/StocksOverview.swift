@@ -26,11 +26,6 @@ struct StocksOverview: View {
         NavigationView {
             ZStack {
                 VStack {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .black))
-                        .scaleEffect(viewModel.stocksLoading ? 2 : 0)
-                        .frame(height: viewModel.stocksLoading ? 20 : 0)
-                        .opacity(viewModel.stocksLoading ? 1: 0)
                     List {
                         ForEach(self.viewModel.stocks, id: \.ticker) { stock in // cannot use capture list here non escaping closure..
                             NavigationLink {
@@ -68,6 +63,11 @@ struct StocksOverview: View {
                         .foregroundColor(.gray)
                     }
                 }
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: .black))
+                    .scaleEffect(viewModel.stocksLoading ? 2 : 0)
+                    .frame(height: viewModel.stocksLoading ? 20 : 0)
+                    .opacity(viewModel.stocksLoading ? 1: 0)
             }
 
         }
@@ -76,6 +76,10 @@ struct StocksOverview: View {
                 print("App sent to background")
                 // Typically persistence layer would be cached here.
             }
+        }
+        .onDisappear {
+            self.viewModel.closeLoadingState()
+            print("Close loading state")
         }
     }
 }

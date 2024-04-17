@@ -31,30 +31,23 @@ extension StockDetailView {
             self.stockDataService = stockService
             self.persistenceService = persistenceService
             self.basicStockValue = basicStockValue
-            subscribeToPublisher()
+            self.subscribeToPublisher()
         }
         
         private func subscribeToPublisher() {
             stockDataService.stockValuesPublisher
+                .receive(on: DispatchQueue.main)
                 .sink { [weak self] (newStockValue) in
                     guard let self = self else { return }
-                    DispatchQueue.main.async {
-                        self.seriesData = []
-                    }
+                    self.seriesData = []
                     if let results = newStockValue.results {
                         for item in results {
                             let seriesDatum = StockSummary(timestamp: item.timestamp,
                                                            sales: item.closePrice)
-                            DispatchQueue.main.async { [weak self] in
-                                guard let self = self else { return }
-                                self.seriesData.append(seriesDatum)
-                            }
+                            self.seriesData.append(seriesDatum)
                         }
                     }
-                    DispatchQueue.main.async { [weak self] in
-                        guard let self = self else { return }
-                        self.stock = newStockValue
-                    }
+                    self.stock = newStockValue
                 }
                 .store(in: &cancellables)
             

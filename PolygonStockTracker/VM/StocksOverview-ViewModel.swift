@@ -20,6 +20,7 @@ extension StocksOverview {
         
         @Published var stocks: [BasicStockValue] = []
         @Published var stocksLoading: Bool = false
+        private var networkLoading: Bool = false
         // TODO: -  make private setters
         private var cancellables = Set<AnyCancellable>()
         init(networkService: NetworkServicable = NetworkService(),
@@ -33,24 +34,21 @@ extension StocksOverview {
         
         private func subscribeToPublisher() {
             updateStockService.stockValuesPublisher
+                .receive(on: DispatchQueue.main)
                 .sink { [weak self] (newStockValues) in
                     guard let self = self else { return }
                     print("new stock value in Overview = \(newStockValues)")
-                    self.stocksLoading = true
-                    DispatchQueue.main.async {
-                        self.stocksLoading = false
-                        self.persistenceService.addUpdatedStocksToStore(newStockValues)
-                        self.stocks = newStockValues
-                        self.stocksLoading = false
-                    }
+                    self.stocks = newStockValues
+                    self.persistenceService.addUpdatedStocksToStore(newStockValues)
+                    print("Stock updated \(newStockValues.count)")
+                    self.updateLoadingStatusBy(newStockValues)
                 }
                 .store(in: &cancellables)
         }
         
         func fetchUpdatedStocks() async {
-            DispatchQueue.main.async {
-                self.stocksLoading = true
-            }
+            self.networkLoading = true
+            self.updateLoadingState()
             await self.updateStockService.fetchCurrentInfoForStocks(symbols: stocks)
         }
         
@@ -59,9 +57,33 @@ extension StocksOverview {
             self.persistenceService.getStoredStockValues { stocks in
                 DispatchQueue.main.async {
                     self.stocks = stocks
-                    self.stocksLoading = false
+                    self.networkLoading = false
                 }
             }
+        }
+        
+        private func updateLoadingState() {
+            DispatchQueue.main.async {
+                self.stocksLoading = self.networkLoading
+                print("the loading state is \(self.stocksLoading)")
+            }
+        }
+        
+        fileprivate func updateLoadingStatusBy(_ newStockValues: [BasicStockValue]) {
+            if networkLoading {
+                if (newStockValues.count > 0) {
+                    self.networkLoading = false
+                } else {
+                    print("Stocks loading = \(stocksLoading) \n NetworkLoading = \(networkLoading), \n Stock count = \(newStockValues)")
+                }
+            } else {
+                self.stocksLoading = false
+            }
+        }
+        
+        func closeLoadingState() {
+            self.stocksLoading = false
+            self.networkLoading = false
         }
 
         deinit {
