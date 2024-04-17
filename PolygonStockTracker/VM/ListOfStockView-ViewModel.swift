@@ -14,32 +14,49 @@ extension ListOfStocksView {
         @Published var stocks: [BasicStockValue] = []
         init(persistence: Storable = PersistenceService()) {
             self.persistenceService = persistence
-            self.stocks = self.setupStocks()
+            self.setupStocks()
         }
         
-        private func setupStocks() -> [BasicStockValue] {
-            return persistenceService.getStoredStockValues()
+        func setupStocks() {
+            self.persistenceService.getStoredStockValues { [weak self] stocks in
+                guard let self = self else { return } // dont forget 'in' after capture list
+                DispatchQueue.main.async {
+                    self.stocks = stocks
+                   // self.persistenceService.replaceStocksInStoreWith(stocks)
+                }
+            }
         }
-        
-        func updateStocksForView() {
-            self.stocks = setupStocks()
-            self.persistenceService.addUpdatedStocksToStore(self.stocks)
-        }
-        
+
         func addStock(stock: BasicStockValue) {
-            let stocks = persistenceService.getStoredStockValues()
-            self.stocks = stocks
-            self.stocks.append(stock)
-            self.persistenceService.addUpdatedStocksToStore(self.stocks)
+            self.persistenceService.getStoredStockValues { [weak self] stocks in
+                guard let self = self else { return } // dont forget 'in' after capture list
+                DispatchQueue.main.async {
+                    self.stocks = stocks
+                    self.stocks.append(stock)
+                    self.persistenceService.addUpdatedStocksToStore(self.stocks)
+                }
+            }
         }
         
         func removeStockAt(offsets: IndexSet) {
-            let stocks = persistenceService.getStoredStockValues()
-            self.stocks = stocks
-            print("Before:  \(self.stocks)")
-            self.stocks.remove(atOffsets: offsets)
-            print("AFter:  \(self.stocks)")
-            self.persistenceService.replaceStocksInStoreWith(self.stocks)
+            let index = offsets.startIndex
+            let stockToRemove: [BasicStockValue] = stocks.enumerated()
+                .filter { offsets.contains($0.offset) }
+                .map { $0.element }
+            
+            self.persistenceService.getStoredStockValues { [weak self] stocks in
+                guard let self = self else { return } // dont forget 'in' after capture list
+                DispatchQueue.main.async {
+                    self.stocks = stocks
+                    print("Before:  \(self.stocks)")
+                    let tickers = stockToRemove.map { $0.ticker }
+                    self.stocks.removeAll { stockSymbol in
+                        tickers.contains(stockSymbol.ticker)
+                    }
+                    print("AFter:  \(self.stocks)")
+                    self.persistenceService.replaceStocksInStoreWith(self.stocks)
+                }
+            }
         }
     }
 }

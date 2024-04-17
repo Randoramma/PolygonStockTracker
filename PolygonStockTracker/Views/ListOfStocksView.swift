@@ -30,7 +30,7 @@ struct ListOfStocksView: View {
             }
             .navigationBarTitle(Constants.listOfStocks, displayMode: .inline)
             .sheet(isPresented: $showAddView,
-                   onDismiss: self.viewModel.updateStocksForView,
+                   onDismiss: self.viewModel.setupStocks,
                    content: {
                 AddSheet(persistence: self.viewModel.persistenceService,
                          networkService: self.networkService, 

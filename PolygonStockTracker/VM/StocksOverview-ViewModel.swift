@@ -35,6 +35,7 @@ extension StocksOverview {
             updateStockService.stockValuesPublisher
                 .sink { [weak self] (newStockValues) in
                     guard let self = self else { return }
+                    print("new stock value in Overview = \(newStockValues)")
                     self.stocksLoading = true
                     DispatchQueue.main.async {
                         self.stocksLoading = false
@@ -55,10 +56,11 @@ extension StocksOverview {
         
         func updateLocalStocks() {
             self.stocksLoading = true
-            let stocks = persistenceService.getStoredStockValues()
-            DispatchQueue.main.async {
-                self.stocks = stocks
-                self.stocksLoading = false
+            self.persistenceService.getStoredStockValues { stocks in
+                DispatchQueue.main.async {
+                    self.stocks = stocks
+                    self.stocksLoading = false
+                }
             }
         }
 

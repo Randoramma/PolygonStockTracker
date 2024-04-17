@@ -28,7 +28,7 @@ struct PolygonStockTrackerApp: App {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 Task {
-                    let stocks = persistanceService.getStoredStockValues()
+                    let stocks = await self.persistanceService.awaitStoredStockValues()
                     await self.stockService.fetchCurrentInfoForStocks(symbols:stocks)
                 }
             } else {

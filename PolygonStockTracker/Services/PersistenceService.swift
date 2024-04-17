@@ -11,7 +11,27 @@ import Foundation
 protocol Storable {
     func replaceStocksInStoreWith(_ stockValues: [BasicStockValue])
     func addUpdatedStocksToStore(_ newStockValues:  [BasicStockValue])
-    func getStoredStockValues() -> [BasicStockValue]
+    func getStoredStockValues(completion: @escaping ([BasicStockValue]) -> Void)
+}
+
+extension Storable {
+    func awaitStoredStockValues() async -> [BasicStockValue] {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.main.async {
+                guard let data = UserDefaults.standard.value(forKey: Constants.storedStockValuesKey) as? Data else {
+                    continuation.resume(returning: [])
+                    return
+                }
+
+                do {
+                    let array = try JSONDecoder().decode([BasicStockValue].self, from: data)
+                    continuation.resume(returning: array)
+                } catch {
+                    continuation.resume(returning: [])
+                }
+            }
+        }
+    }
 }
 
 // UserDefaults storage class that conforms to the Storage protocol
@@ -27,27 +47,47 @@ class PersistenceService: Storable {
     
     func replaceStocksInStoreWith(_ stockValues: [BasicStockValue]) {
         if let encoded = try? encoder.encode(stockValues) {
-            defaults.set(encoded, forKey: Constants.storedStockValuesKey)
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return } // dont forget 'in' after capture list
+                self.defaults.set(encoded, forKey: Constants.storedStockValuesKey)
+            }
         }
     }
     
     func addUpdatedStocksToStore(_ newStockValues:  [BasicStockValue]) {
         
-        let stocks = getStoredStockValues()
-        let updatedStockArray: [BasicStockValue] = self.updateStocksArrayWith(newStockValues, for: stocks)
-        
-        if let encoded = try? encoder.encode(updatedStockArray) {
-            defaults.set(encoded, forKey: Constants.storedStockValuesKey)
+        self.getStoredStockValues { [weak self] stocks in
+            guard let self = self else { return }
+            let updatedStockArray: [BasicStockValue] = self.updateStocksArrayWith(newStockValues, for: stocks)
+            
+            if let encoded = try? encoder.encode(updatedStockArray) {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    self.defaults.set(encoded, forKey: Constants.storedStockValuesKey)
+                }
+            }
         }
     }
     
-    func getStoredStockValues() -> [BasicStockValue] {
-        if let data = defaults.value(forKey: Constants.storedStockValuesKey) as? Data {
-            if let array = try? decoder.decode([BasicStockValue].self, from: data) {
-                return array
+    func getStoredStockValues(completion: @escaping ([BasicStockValue]) -> Void) {
+        DispatchQueue.main.async { [weak self] in
+            guard let _ = self else {
+                completion([])
+                return
+            }
+
+            guard let data = UserDefaults.standard.value(forKey: Constants.storedStockValuesKey) as? Data else {
+                completion([])
+                return
+            }
+
+            do {
+                let array = try JSONDecoder().decode([BasicStockValue].self, from: data)
+                completion(array)
+            } catch {
+                completion([])
             }
         }
-        return []
     }
     
     private func updateStocksArrayWith(_ stockObjects: [BasicStockValue],

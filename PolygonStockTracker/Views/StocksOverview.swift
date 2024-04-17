@@ -32,7 +32,7 @@ struct StocksOverview: View {
                         .frame(height: viewModel.stocksLoading ? 20 : 0)
                         .opacity(viewModel.stocksLoading ? 1: 0)
                     List {
-                        ForEach(self.viewModel.stocks, id: \.ticker) { stock in // cannot use capture list here
+                        ForEach(self.viewModel.stocks, id: \.ticker) { stock in // cannot use capture list here non escaping closure..
                             NavigationLink {
                                 StockDetailView(stock: stock,
                                                 networkService:  self.networkService)

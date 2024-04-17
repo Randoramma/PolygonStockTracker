@@ -46,12 +46,15 @@ extension SearchView {
         }
         
         func didSelectStockToAdd(ticker: String) {
-            var stocks = persistenceService.getStoredStockValues()
-            stocks.append(BasicStockValue(ticker: ticker, 
-                                          daily: 0, 
-                                          dailyChange: 0,
-                                          date: 0))
-            persistenceService.addUpdatedStocksToStore(stocks)
+            self.persistenceService.getStoredStockValues { [weak self] stocks in
+                var stockArray = stocks
+                guard let self = self else { return } // dont forget 'in' after capture list
+                stockArray.append(BasicStockValue(ticker: ticker,
+                                              daily: 0,
+                                              dailyChange: 0,
+                                              date: 0))
+                persistenceService.addUpdatedStocksToStore(stockArray)
+            }
         }
         
         // MARK: - Binding of Data to the UI

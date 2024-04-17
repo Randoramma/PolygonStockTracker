@@ -62,7 +62,7 @@ extension StockDetailView {
                 .sink {  [weak self] (newBasicStockValue) in
                     guard let self = self else { return }
                     DispatchQueue.main.async {
-                        self.persistenceService.addUpdatedStocksToStore([newBasicStockValue])
+                        self.persistenceService.addUpdatedStocksToStore([])
                         self.basicStockValue = newBasicStockValue
                     }
                 }
